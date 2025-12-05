@@ -15,7 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
-public class MinioController {
+public class  MinioController {
 
     private final MinioService minioService;
 
@@ -97,6 +97,48 @@ public class MinioController {
 
         } catch (Exception e) {
             log.error("Ошибка при загрузке PNG файла: {}", e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Ошибка при загрузке файла: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PostMapping("/upload/json")
+    public ResponseEntity<Map<String, Object>> uploadJsonFile(
+            @RequestParam("file") MultipartFile file) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            if (file.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Файл не может быть пустым");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".json")) {
+                response.put("success", false);
+                response.put("message", "Файл должен иметь расширение .json");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            minioService.uploadFileFromStream(
+                    originalFilename,
+                    file.getInputStream(),
+                    "application/json",
+                    file.getSize()
+            );
+
+            response.put("success", true);
+            response.put("message", "JSON файл успешно загружен");
+            response.put("filename", originalFilename);
+            response.put("size", file.getSize());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Ошибка при загрузке JSON файла: {}", e.getMessage(), e);
             response.put("success", false);
             response.put("message", "Ошибка при загрузке файла: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
